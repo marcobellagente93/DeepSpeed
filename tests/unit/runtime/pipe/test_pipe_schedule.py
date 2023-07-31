@@ -39,6 +39,22 @@ def test_pipe_train_schedule_singlestage():
     assert len(full) == sched.num_micro_batches * 2
 
 
+def test_pipe_train_sam_schedule_singlestage():
+    sched = schedule.TrainScheduleSAM(micro_batches=4, stages=1, stage_id=0)
+    assert sched.num_micro_batches == 4
+    full = list(iter(sched))
+    for idx, cmds in enumerate(full):
+        if (idx % 2) != 0:
+            assert (len(cmds) == 1) or (len(cmds) == 4)
+            assert type(cmds[0]) == schedule.BackwardPass
+        else:
+            assert len(cmds) == 2
+            assert type(cmds[0]) == schedule.LoadMicroBatch
+            assert type(cmds[1]) == schedule.ForwardPass
+            assert cmds[0].buffer_id == cmds[1].buffer_id
+    assert len(full) == sched.num_micro_batches * 2
+
+
 @pytest.mark.parametrize('micro_batches', [1, 3, 8, 10])
 def test_pipe_inference_schedule_firststage(micro_batches, stages=3):
     sched = schedule.InferenceSchedule(micro_batches=micro_batches, stages=stages, stage_id=0)
